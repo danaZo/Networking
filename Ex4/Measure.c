@@ -28,7 +28,7 @@ int main(){
 
     struct sockaddr_in address;
     address.sin_family = AF_INET;
-    address.sin_port = htons(8001);
+    address.sin_port = htons(6789);
     address.sin_addr.s_addr = INADDR_ANY;
 
     e = bind(soc, (struct sockaddr*) &address, sizeof(address) );
@@ -38,12 +38,6 @@ int main(){
     }
 
     char buf[256]; // for CC algorithm change
-
-    soc = socket(AF_INET, SOCK_STREAM, 0);
-    if (soc < 0)
-    {
-        perror("socket");
-    }
 
 
     int senderSoc;

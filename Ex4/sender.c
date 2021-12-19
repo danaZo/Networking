@@ -37,7 +37,7 @@ int main(){
     
     struct sockaddr_in measure_addr;
     measure_addr.sin_family = AF_INET;
-    measure_addr.sin_port = htons(8001);
+    measure_addr.sin_port = htons(6789);
     measure_addr.sin_addr.s_addr = INADDR_ANY;
 
     int con;
