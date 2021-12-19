@@ -5,8 +5,8 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
 
+#include <unistd.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -44,26 +44,6 @@ int main(){
     {
         perror("socket");
     }
-
-    // Default CC algorithm is Cubic, we just make sure this is the correct now
-    // So there will be no issues with recieving from sender.
-
-    int length = sizeof(buf);
-    if (getsockopt(soc, IPPROTO_TCP, TCP_CONGESTION, buf, &length) != 0)
-    {
-        perror("getsockopt");
-        return -1;
-    }
-
-    length = sizeof(buf);
-    if (getsockopt(soc, IPPROTO_TCP, TCP_CONGESTION, buf, &length) != 0)
-    {
-        perror("getsockopt");
-        return -1;
-    }
-    printf("Congestion Control Strategy: %s\n", buf);
-
-
 
 
     int senderSoc;
