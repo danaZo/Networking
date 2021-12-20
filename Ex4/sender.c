@@ -33,7 +33,7 @@ int main(){
 
 
     FILE *f;
-    char *filename = "1mb.txt";
+    char *filename = "50kb.txt";
 
     //create a socket
     int soc;
