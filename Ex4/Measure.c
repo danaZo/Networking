@@ -10,15 +10,15 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include <time.h>
+#include <sys/time.h>
 #include <signal.h>
 
 
 
 int main(){
 
-
-    //create a socket
+    struct timeval start, end;
+    //create a socket   
     int soc, e;
     soc = socket(AF_INET, SOCK_STREAM, 0);
     if( soc < 0){
@@ -45,7 +45,7 @@ int main(){
 
 
 
-    //5 times in the first CC
+    //5 times in Cubic
     for(int i = 0 ; i < 5 ; i++){
         e = listen(soc, 2);
         if( e < 0){
@@ -59,7 +59,7 @@ int main(){
 
         char buffer[1024];
         int KbytesRec = 0 ;
-        clock_t start = clock();
+        gettimeofday(&start , NULL);
         while((e = recv(senderSoc, &buffer , sizeof(buffer) ,0) > 0)){
             
             if( e < 0){
@@ -67,17 +67,20 @@ int main(){
           }
             KbytesRec += e;
         }
-        clock_t end = clock();
-        totalTime += (float)(end - start);
+        gettimeofday(&end , NULL);
+        
         printf("%d\n", KbytesRec);
 
+        double timeTaken =((end.tv_sec *1000000 + end.tv_usec) -
+             (start.tv_sec*1000000 + start.tv_usec)) ;
         // printf("Message recieved: %s \n", buffer);
+        totalTime += timeTaken;
         bzero(buffer, 1024);
         close(senderSoc);
     } 
 
-    printf("Total receiving time: %f seconds\n", totalTime/1000000);
-    printf("Average receiving time: %f seconds\n", totalTime/5000000);   
+    printf("Total receiving time Cubic: %f seconds\n", totalTime/1000000);
+    printf("Average receiving time Reno: %f seconds\n", totalTime/5000000.0);   
 
     close(soc);
 
