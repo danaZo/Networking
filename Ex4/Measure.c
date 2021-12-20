@@ -1,122 +1,142 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
+#include <string.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
+
+#include <unistd.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <unistd.h>
-#include <string.h>
-#include <time.h>
+#include <arpa/inet.h>
+#include <sys/time.h>
+#include <signal.h>
 
 
-void send_file(FILE *f, int socket){
-
-    char s[1024];
-    size_t siz;
-    while ((siz = fread(s, 1, sizeof s, f)) > 0){
-       int t = send(socket, s, sizeof(s), 0);
-            if(t < 0){
-                perror("sending failed \n");
-                exit(1);
-            }
-    }
-    if (ferror(f)) {
-        perror("Error: ");
-    }
-    printf("Message sent \n");
-}
 
 int main(){
+
+    struct timeval start, end;
+    //create a socket   
+    int soc, e;
+    soc = socket(AF_INET, SOCK_STREAM, 0);
+    if( soc < 0){
+        printf("Socket creation failed\n");
+        exit(1);
+    }
+
+    struct sockaddr_in address;
+    address.sin_family = AF_INET;
+    address.sin_port = htons(6789);
+    address.sin_addr.s_addr = INADDR_ANY;
+
+    e = bind(soc, (struct sockaddr*) &address, sizeof(address) );
+    if( e < 0){
+        printf("Binding failed \n");
+        exit(1);
+    }
 
     char buf[256];
     socklen_t len;
 
 
-    FILE *f;
-    char *filename = "1mb.txt";
+    int senderSoc;
+    double totalTime = 0;
 
-    //create a socket
-    int soc;
-    
-    
-    
-    struct sockaddr_in measure_addr;
-    measure_addr.sin_family = AF_INET;
-    measure_addr.sin_port = htons(6789);
-    measure_addr.sin_addr.s_addr = INADDR_ANY;
 
-    int con;
-    float totalTime = 0;
     
-    printf("CC algorithm: Cubic\n");
     //5 times in Cubic
-    for(int i = 0 ; i <5 ; i++){
-        soc = socket(AF_INET, SOCK_STREAM, 0);
-        con = connect(soc, (struct  sockaddr*) &measure_addr, sizeof(measure_addr));
+    printf("Curent CC: Cubic\n");
+    for(int i = 0 ; i < 5 ; i++){
+        e = listen(soc, 2);
+        if( e < 0){
+            printf("Listening Failure \n");
+        }
 
-        if(con < 0 ){
-            perror("connection failed");
-        }
-        else{
-            printf("connection established successfuly\n");
-        }
-        
-        f = fopen(filename, "r");
-        if(!f){
-
-            printf("~ file opening failed ~");
-        }
-        clock_t start = clock();
-        send_file(f, soc);
-        clock_t end = clock();
-        totalTime += (float)(end - start);
-        close(soc);
-        fclose(f);
-            
+        senderSoc = accept(soc, NULL , NULL);
+        if( senderSoc < 0){
+        perror("Accepting Failure: ");
     }
-    printf("Total sending time: %f seconds\n", totalTime/1000000);
-    printf("Average sending time: %f seconds\n", totalTime/5000000);
-    
 
+        char buffer[1024];
+        int KbytesRec = 0 ;
+        gettimeofday(&start , NULL);
+        while((e = recv(senderSoc, &buffer , sizeof(buffer) ,0) > 0)){
+            
+            if( e < 0){
+                perror("Error: ");
+          }
+            KbytesRec += e;
+        }
+        gettimeofday(&end , NULL);
+        
+        //printf("%d\n", KbytesRec);
+
+        double timeTaken =((end.tv_sec *1000000 + end.tv_usec) -
+             (start.tv_sec*1000000 + start.tv_usec)) ;
+        // printf("Message recieved: %s \n", buffer);
+        totalTime += timeTaken;
+        bzero(buffer, 1024);
+        close(senderSoc);
+    } 
+
+    printf("Total receiving time Cubic: %f seconds\n", totalTime/1000000);
+    printf("Average receiving time Cubic: %f seconds\n", totalTime/5000000.0);   
     
-    printf("Switched CC to: reno\n");
     
-    // 5 times in reno
-    for(int i = 0 ; i <5 ; i++){
-        soc = socket(AF_INET, SOCK_STREAM, 0);
-      	 strcpy(buf, "reno"); 
-    	 len = strlen(buf);
-   	 if (setsockopt(soc, IPPROTO_TCP, TCP_CONGESTION, buf, len) != 0) {
+    
+        strcpy(buf, "reno"); 
+    len = strlen(buf);
+    if (setsockopt(soc, IPPROTO_TCP, TCP_CONGESTION, buf, len) != 0) {
 	perror("setsockopt"); 
 	return -1;
     }
-        
-        con = connect(soc, (struct  sockaddr*) &measure_addr, sizeof(measure_addr));
-        
+    
+    len = sizeof(buf); 
+    if (getsockopt(soc, IPPROTO_TCP, TCP_CONGESTION, buf, &len) != 0) {
+        perror("getsockopt"); 
+        return -1; 
+    } 
+    
 
-        if(con < 0 ){
-            perror("connection failed");
+    for(int i = 0 ; i < 5 ; i++){
+        e = listen(soc, 2);
+        if( e < 0){
+            printf("Listening Failure \n");
         }
-        else{
-            printf("connection established successfuly\n");
-        }
-        
-        f = fopen(filename, "r");
-        if(!f){
 
-            printf("~ file opening failed ~");
-        }
-        clock_t start = clock();
-        send_file(f, soc);
-        clock_t end = clock();
-        totalTime += (float)(end - start);
-        close(soc);
-        fclose(f);
-            
+        senderSoc = accept(soc, NULL , NULL);
+        if( senderSoc < 0){
+        perror("Accepting Failure: ");
     }
-    printf("Total sending time: %f seconds\n", totalTime/1000000);
-    printf("Average sending time: %f seconds\n", totalTime/5000000);
-    
-    
 
+        char buffer[1024];
+        int KbytesRec = 0 ;
+        gettimeofday(&start , NULL);
+        while((e = recv(senderSoc, &buffer , sizeof(buffer) ,0) > 0)){
+            
+            if( e < 0){
+                perror("Error: ");
+          }
+            KbytesRec += e;
+        }
+        gettimeofday(&end , NULL);
+        
+        //printf("%d\n", KbytesRec);
+
+        double timeTaken =((end.tv_sec *1000000 + end.tv_usec) -
+             (start.tv_sec*1000000 + start.tv_usec)) ;
+        // printf("Message recieved: %s \n", buffer);
+        totalTime += timeTaken;
+        bzero(buffer, 1024);
+        close(senderSoc);
+    } 
+
+    printf("Total receiving time Reno: %f seconds\n", totalTime/1000000);
+    printf("Average receiving time Reno: %f seconds\n", totalTime/5000000.0);
+
+    close(soc);
+
+    return 0;
 }
