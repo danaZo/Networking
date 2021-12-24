@@ -1,8 +1,5 @@
 // icmp.cpp
-// Robert Iakobashvili for Ariel uni, license BSD/MIT/Apache
-// 
 // Sending ICMP Echo Requests using Raw-sockets.
-//
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,38 +21,18 @@
 //Checksum algo
 unsigned short calculate_checksum(unsigned short * paddress, int len);
 
-
 void receive(int socket, char* buff,size_t buff_size);
-
-// 1. Change SOURCE_IP and DESTINATION_IP to the relevant
-//     for your computer
-// 2. Compile it using MSVC compiler or g++
-// 3. Run it from the account with administrative permissions,
-//    since opening of a raw-socket requires elevated preveledges.
-//
-//    On Linux, run it as a root or with sudo.
-//
-// 4. For debugging and development, run MS Visual Studio (MSVS) as admin by
-//    right-clicking at the icon of MSVS and selecting from the right-click 
-//    menu "Run as administrator"
-//
-//  Note. You can place another IP-source address that does not belong to your
-//  computer (IP-spoofing), i.e. just another IP from your subnet, and the ICMP
-//  still be sent, but do not expect to see ICMP_ECHO_REPLY in most such cases
-//  since anti-spoofing is wide-spread.
 
 // i.e the gateway or ping to google.com for their ip-address
 #define DESTINATION_IP "8.8.8.8"
 
 int main ()
 {
-    struct ip iphdr; // IPv4 header
     struct icmp icmphdr; // ICMP-header
-    struct timeval start, end;
+    struct timeval start, end; //used to calculate the RTT
     char data[IP_MAXPACKET] = "This is the ping.\n";
 
     int datalen = strlen(data) + 1;
-
 
     //===================
     // ICMP header
@@ -95,11 +72,10 @@ int main ()
     memset (&dest_in, 0, sizeof (struct sockaddr_in));
     dest_in.sin_family = AF_INET;
 
-    // The port is irrelant for Networking and therefore was zeroed.
+    // The port is irrelevant for Networking and therefore was zeroed.
 
     dest_in.sin_addr.s_addr = inet_addr(DESTINATION_IP);
 
-    // Create raw socket for IP-RAW (make IP-header by yourself)
     int sock = -1;
     if ((sock = socket (AF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1) 
     {
@@ -119,35 +95,41 @@ int main ()
 			);
         return -1;
     }
+    printf("sent ICMP header to: %s \n" , DESTINATION_IP);
 
-
-    bzero(packet, IP_MAXPACKET);
     receive(sock, packet, sizeof(packet));
     gettimeofday(&end,NULL); 
 
     //calculate the RTT in mili seconds and micro seconds
     double micsec = ((end.tv_sec *1e6 + end.tv_usec) - (start.tv_sec *1e6 + start.tv_usec));
     double milsec = micsec / 1000;
-    printf("RTT in mili seconds: %f \n",milsec );
-    printf("RTT in micro seconds: %f \n", micsec);
-
+    printf("RTT in mili seconds: %.3f \n",milsec );
+    printf("RTT in micro seconds: %.0f \n", micsec);
+    
   // Close the raw socket descriptor.
-
   close(sock);
-  
 
   return 0;
 }
 
+//this function used to get an ICMP response from pre-defined source
 void receive(int socket , char* buff , size_t buff_size){
     int flag;
-    flag = recvfrom(socket, buff, buff_size, 0 , NULL, NULL);
-    if(flag == -1){
-        perror("Receiving Error: ");
-        exit(1);
+    struct sockaddr_in source; //used to store the source details
+    socklen_t len = sizeof(source);
+    while(1){
+        flag = recvfrom(socket, buff, buff_size, 0 , (struct sockaddr *) &source, &len);
+        if(flag == -1){
+            perror("Receiving Error: ");
+            exit(1);
+        }
+        //Filter messages sent from diffrent sources
+        if(strcmp(DESTINATION_IP,inet_ntoa(source.sin_addr) ) == 0){
+            printf("received reply from %s!\n" , DESTINATION_IP);
+            return;
+        }   
     }
 }
-
 
 // Compute checksum (RFC 1071).
 unsigned short calculate_checksum(unsigned short * paddress, int len)
@@ -176,4 +158,3 @@ unsigned short calculate_checksum(unsigned short * paddress, int len)
 
 	return answer;
 }
-
