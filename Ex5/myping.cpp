@@ -127,8 +127,10 @@ void receive(int socket , char* buff , size_t buff_size){
         if(strcmp(DESTINATION_IP,inet_ntoa(source.sin_addr) ) == 0){
             printf("received reply from %s!\n" , DESTINATION_IP);
             return;
-        }   
+        }
+        
     }
+    
 }
 
 // Compute checksum (RFC 1071).
